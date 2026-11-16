@@ -1,0 +1,225 @@
+/* frontend/src/index.css - HBTU Book Marketplace Telegram Mini App */
+
+:root {
+  --tg-theme-bg-color: #ffffff;
+  --tg-theme-text-color: #111827;
+  --tg-theme-hint-color: #6b7280;
+  --tg-theme-link-color: #2563eb;
+  --tg-theme-button-color: #2563eb;
+  --tg-theme-button-text-color: #ffffff;
+  --tg-theme-secondary-bg-color: #f3f4f6;
+  --tg-theme-header-bg-color: #ffffff;
+  --font-sans: 'Plus Jakarta Sans', 'Padauk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+body.dark,
+body[data-theme='dark'] {
+  --tg-theme-bg-color: #0f172a;
+  --tg-theme-text-color: #f8fafc;
+  --tg-theme-hint-color: #94a3b8;
+  --tg-theme-link-color: #38bdf8;
+  --tg-theme-button-color: #38bdf8;
+  --tg-theme-button-text-color: #0f172a;
+  --tg-theme-secondary-bg-color: #1e293b;
+  --tg-theme-header-bg-color: #0f172a;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  height: 100%;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  background-color: var(--tg-theme-bg-color);
+  color: var(--tg-theme-text-color);
+  overflow-x: hidden;
+}
+
+/* Utilities */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.card-press {
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.card-press:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+/* Container */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  max-width: 480px;
+  margin: 0 auto;
+  position: relative;
+  background-color: var(--tg-theme-bg-color);
+}
+
+.main-content {
+  flex: 1;
+  padding: 16px 16px calc(76px + env(safe-area-inset-bottom, 12px)) 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 480px;
+  margin: 0 auto;
+  height: calc(64px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background-color: var(--tg-theme-secondary-bg-color);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 50;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+body.dark .bottom-nav,
+body[data-theme='dark'] .bottom-nav {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--tg-theme-hint-color);
+  transition: all 0.15s ease;
+  flex: 1;
+  height: 64px;
+  padding: 4px 0;
+}
+
+.nav-item.active {
+  color: var(--tg-theme-button-color);
+  font-weight: 700;
+}
+
+.nav-item svg {
+  margin-bottom: 2px;
+  transition: transform 0.15s ease;
+}
+
+.nav-item.active svg {
+  transform: translateY(-1px);
+}
+
+/* Card Styling */
+.book-card {
+  background-color: var(--tg-theme-secondary-bg-color);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+body.dark .book-card,
+body[data-theme='dark'] .book-card {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.book-card:active {
+  transform: scale(0.98);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.badge-available { background-color: #dcfce7; color: #15803d; }
+.badge-pending { background-color: #ffedd5; color: #c2410c; }
+.badge-sold { background-color: #e0e7ff; color: #4338ca; }
+.badge-cancelled { background-color: #f3f4f6; color: #4b5563; }
+.badge-delisted { background-color: #fee2e2; color: #b91c1c; }
+
+/* Buttons */
+.btn-primary {
+  background-color: var(--tg-theme-button-color);
+  color: var(--tg-theme-button-text-color);
+  border: none;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  transition: opacity 0.2s, transform 0.1s ease;
+}
+
+.btn-primary:active {
+  opacity: 0.85;
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--tg-theme-button-color);
+  border: 1.5px solid var(--tg-theme-button-color);
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.2s, transform 0.1s ease;
+}
+
+.btn-secondary:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}

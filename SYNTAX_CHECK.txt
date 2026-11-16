@@ -1,0 +1,6 @@
+Python files checked: 37
+Python syntax errors: 0
+Internal app.* module import paths checked: all found
+Internal app.* imported symbols checked: all found
+
+Note: this is a static syntax/import-path check only. Runtime imports and Telegram/MongoDB integration could not be executed in this environment because the Python dependencies are not installed and package installation was unavailable.
