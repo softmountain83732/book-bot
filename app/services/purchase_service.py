@@ -12,6 +12,7 @@ from telegram import Bot
 from telegram.constants import ParseMode
 from telegram.error import TelegramError
 
+from app.api.utils.semester import format_semester
 from app.keyboards.book_actions import buyer_cancel_keyboard, seller_control_keyboard
 from app.services.audit_service import record_audit_event
 from app.services.channel_service import update_book_channel
@@ -32,6 +33,38 @@ def telegram_contact_link(user_id: int, username: Optional[str]) -> str:
     if username:
         return f"@{escape(username)}"
     return f'<a href="tg://user?id={user_id}">Telegram account</a>'
+
+
+def build_buyer_purchase_message(book: dict, seller_username: Optional[str] = None) -> str:
+    """Build the Direct Message notification sent to the buyer after a purchase claim."""
+    raw_year = book.get("year", "N/A")
+    year_int = raw_year if isinstance(raw_year, int) else (int(raw_year) if str(raw_year).isdigit() else None)
+    semester_label = format_semester(year_int, book.get("semester"))
+    seller_id = book.get("seller_id")
+
+    if not seller_username:
+        seller_username = book.get("seller_username")
+
+    if seller_username:
+        clean_user = seller_username.lstrip("@")
+        seller_line = f"👤 Seller: @{escape(clean_user)}"
+    elif seller_id:
+        seller_line = f'👤 Seller: <a href="tg://user?id={seller_id}">Telegram account</a>'
+    else:
+        seller_line = "👤 Seller: Not available"
+
+    year_str = f"Year {raw_year}" if str(raw_year).isdigit() else str(raw_year)
+
+    return (
+        "📚 <b>Your purchase request has been received!</b>\n\n"
+        f"Book: {escape(str(book.get('title', 'Untitled')))}\n"
+        f"Price: {escape(get_price_display(book))}\n"
+        f"Major: {escape(str(book.get('major', 'N/A')))}\n"
+        f"Year: {escape(year_str)}\n"
+        f"Semester: {escape(str(semester_label))}\n\n"
+        f"{seller_line}\n\n"
+        "You can now contact the seller to discuss and arrange the transaction."
+    )
 
 
 async def buy_book_claim(
@@ -176,6 +209,26 @@ async def buy_book_claim(
             )
         except TelegramError:
             logger.exception("Could not notify seller %s for book %s", book["seller_id"], book_id)
+
+        # Notify buyer
+        seller_username = book.get("seller_username")
+        if not seller_username and book.get("seller_id"):
+            try:
+                seller_user_record = await db.users.find_one({"_id": book["seller_id"]})
+                if seller_user_record:
+                    seller_username = seller_user_record.get("username") or seller_user_record.get("telegram_username")
+            except Exception:
+                logger.exception("Could not lookup seller user record for %s", book.get("seller_id"))
+
+        buyer_msg = build_buyer_purchase_message(book, seller_username=seller_username)
+        try:
+            await bot.send_message(
+                chat_id=buyer_id,
+                text=buyer_msg,
+                parse_mode=ParseMode.HTML,
+            )
+        except TelegramError:
+            logger.exception("Could not notify buyer %s for purchase of book %s", buyer_id, book_id)
 
     return True, "ဝယ်ယူမှု စတင်ပါပြီ။ ရောင်းသူထံသို့ အကြောင်းကြားထားပါသည်။", request_id
 

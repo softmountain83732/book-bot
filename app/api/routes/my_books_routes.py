@@ -15,6 +15,7 @@ from app.api.deps import AuthContext, get_current_user, get_db
 from app.api.schemas.book_schemas import BookDetailResponse, BookListResponse
 from app.config import settings
 from app.services.channel_service import update_book_channel
+from app.services.sell_service import VALID_MAJORS
 from app.services.seller_manage_service import (
     seller_change_status,
     seller_permanently_delete_listing,
@@ -46,10 +47,18 @@ class StatusActionRequest(BaseModel):
 
 class EditListingRequest(BaseModel):
     title: Optional[str] = None
+    major_slug: Optional[str] = None
+    year: Optional[int] = None
+    semester: Optional[Any] = None
     price: Optional[float] = None
     is_negotiable: Optional[bool] = None
     condition: Optional[str] = None
     condition_details: Optional[str] = None
+    photo_file_ids: Optional[List[str]] = None
+
+
+class MyBookDetailResponse(BookDetailResponse):
+    photo_file_ids: List[str] = []
 
 
 @router.get("/metrics", response_model=SellerDashboardMetrics)
@@ -116,14 +125,13 @@ async def list_my_books(
     )
 
 
-@router.put("/{book_id}")
-async def edit_my_book(
+@router.get("/{book_id}", response_model=MyBookDetailResponse)
+async def get_my_book_detail(
     book_id: str,
-    body: EditListingRequest,
     auth: AuthContext = Depends(get_current_user),
     db: AsyncDatabase = Depends(get_db),
 ):
-    """Edit listing details (title, price, condition, negotiable)."""
+    """Retrieve full listing details including photo_file_ids for seller editing."""
     try:
         oid = ObjectId(book_id)
     except (InvalidId, TypeError):
@@ -133,27 +141,111 @@ async def edit_my_book(
     if not book:
         raise HTTPException(status_code=404, detail="Book not found")
 
-    if book.get("status") != "Available" or book.get("admin_hidden"):
-        raise HTTPException(status_code=400, detail="Only Available listings can be edited")
+    # Normalize photo_file_ids
+    if "photo_file_ids" not in book or not book["photo_file_ids"]:
+        if book.get("photo_file_id"):
+            book["photo_file_ids"] = [book["photo_file_id"]]
+        else:
+            book["photo_file_ids"] = []
+
+    return MyBookDetailResponse.model_validate(book)
+
+
+@router.put("/{book_id}")
+async def edit_my_book(
+    book_id: str,
+    body: EditListingRequest,
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncDatabase = Depends(get_db),
+):
+    """Edit listing details (title, major, year, semester, price, negotiable, condition, photos)."""
+    try:
+        oid = ObjectId(book_id)
+    except (InvalidId, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid book ID")
+
+    book = await db.books.find_one({"_id": oid, "seller_id": auth.user_id})
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    if book.get("status") not in ("Available", "Delisted") or book.get("admin_hidden"):
+        raise HTTPException(status_code=400, detail="Only Available or Delisted listings can be edited")
 
     update_fields: Dict[str, Any] = {"updated_at": datetime.now(timezone.utc)}
-    if body.title is not None and len(body.title.strip()) >= 2:
-        update_fields["title"] = body.title.strip()
-    if body.is_negotiable is not None:
-        update_fields["is_negotiable"] = body.is_negotiable
-        if body.is_negotiable:
-            update_fields["price"] = None
-        elif body.price is not None:
-            update_fields["price"] = body.price
-    elif body.price is not None:
-        update_fields["price"] = body.price
 
-    if body.condition is not None and len(body.condition.strip()) >= 2:
-        update_fields["condition"] = body.condition.strip()
+    # Title validation
+    if body.title is not None:
+        clean_title = body.title.strip()
+        if len(clean_title) < 2 or len(clean_title) > 120:
+            raise HTTPException(status_code=400, detail="စာအုပ်အမည်သည် အနည်းဆုံး ၂ လုံးမှ ၁၂၀ လုံးအတွင်း ဖြစ်ရပါမည်။")
+        update_fields["title"] = clean_title
 
+    # Major validation
+    if body.major_slug is not None:
+        clean_slug = body.major_slug.lower().strip()
+        if clean_slug not in VALID_MAJORS:
+            raise HTTPException(status_code=400, detail="မေဂျာ မမှန်ကန်ပါ။")
+        update_fields["major_slug"] = clean_slug
+        update_fields["major"] = VALID_MAJORS[clean_slug]
+
+    # Year & Semester validation
+    new_year = body.year if body.year is not None else book.get("year", 1)
+    new_semester = body.semester if body.semester is not None else book.get("semester", 1)
+    if body.year is not None or body.semester is not None:
+        if new_year not in [1, 2, 3, 4, 5, 6]:
+            raise HTTPException(status_code=400, detail="ပညာသင်နှစ်သည် Year 1 မှ Year 6 အတွင်း ဖြစ်ရပါမည်။")
+
+        str_sem = str(new_semester).strip()
+        if new_year == 2:
+            valid_semesters = {"3", "4", "3 & 4", 3, 4}
+        else:
+            valid_semesters = {"1", "2", "1 & 2", 1, 2}
+
+        if new_semester not in valid_semesters and str_sem not in valid_semesters:
+            raise HTTPException(status_code=400, detail=f"Year {new_year} အတွက် Semester မမှန်ကန်ပါ။")
+
+        update_fields["year"] = new_year
+        update_fields["semester"] = new_semester if isinstance(new_semester, (int, str)) else str_sem
+
+    # Price & Negotiable validation
+    new_is_negotiable = body.is_negotiable if body.is_negotiable is not None else book.get("is_negotiable", False)
+    update_fields["is_negotiable"] = bool(new_is_negotiable)
+    if new_is_negotiable:
+        update_fields["price"] = None
+    else:
+        new_price = body.price if body.price is not None else book.get("price")
+        if new_price is None or float(new_price) <= 0:
+            raise HTTPException(status_code=400, detail="ဈေးနှုန်း မသတ်မှတ်ရသေးပါ (သို့မဟုတ်) ဈေးညှိနှိုင်းဟု ရွေးချယ်ပေးပါ။")
+        if float(new_price) > 10_000_000:
+            raise HTTPException(status_code=400, detail="ဈေးနှုန်း ပမာဏများလွန်းနေပါသည်။")
+        update_fields["price"] = float(new_price)
+
+    # Condition
+    if body.condition is not None:
+        clean_cond = body.condition.strip()
+        if len(clean_cond) < 2:
+            clean_cond = "Used"
+        update_fields["condition"] = clean_cond
+
+    # Condition details
     if body.condition_details is not None:
         det = body.condition_details.strip()
+        if len(det) > 500:
+            raise HTTPException(status_code=400, detail="စာအုပ်အခြေအနေ အသေးစိတ်သည် စာလုံးရေ ၅၀၀ ထက် မကျော်ရပါ။")
         update_fields["condition_details"] = det if det else None
+
+    # Photos
+    photos_updated = False
+    if body.photo_file_ids is not None:
+        if len(body.photo_file_ids) == 0:
+            raise HTTPException(status_code=400, detail="အနည်းဆုံး ဓာတ်ပုံ ၁ ပုံ တင်ပေးရန် လိုအပ်ပါသည်။")
+        if len(body.photo_file_ids) > 4:
+            raise HTTPException(status_code=400, detail="ဓာတ်ပုံ အများဆုံး ၄ ပုံသာ တင်နိုင်ပါသည်။")
+        update_fields["photo_file_ids"] = body.photo_file_ids[:4]
+        update_fields["photo_file_id"] = body.photo_file_ids[0]
+        update_fields["photo_count"] = len(body.photo_file_ids[:4])
+        update_fields["has_photos"] = True
+        photos_updated = True
 
     await db.books.update_one({"_id": oid}, {"$set": update_fields})
 
@@ -162,7 +254,12 @@ async def edit_my_book(
     if updated_doc and updated_doc.get("channel_message_id"):
         bot = Bot(token=settings.bot_token)
         try:
-            await update_book_channel(bot, updated_doc, status="Available")
+            await update_book_channel(
+                bot,
+                updated_doc,
+                status=updated_doc.get("status", "Available"),
+                update_photo=photos_updated,
+            )
         except Exception:
             logger.exception("Failed to update channel caption on edit for %s", book_id)
 

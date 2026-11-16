@@ -29,6 +29,17 @@ class BuyResponse(BaseModel):
     request_id: Optional[str] = None
 
 
+class SellerContactResponse(BaseModel):
+    book_id: str
+    book_title: str
+    price: Optional[float] = None
+    is_negotiable: bool = False
+    seller_id: int
+    seller_username: Optional[str] = None
+    telegram_link: Optional[str] = None
+    has_username: bool = False
+
+
 class CancelPurchaseRequest(BaseModel):
     request_id: str
 
@@ -90,6 +101,54 @@ async def buy_book(
         success=True,
         message=message,
         request_id=str(request_id) if request_id else None,
+    )
+
+
+@router.get("/seller-contact/{book_id}", response_model=SellerContactResponse)
+async def get_seller_contact(
+    book_id: str,
+    auth: AuthContext = Depends(get_current_user),
+    db: AsyncDatabase = Depends(get_db),
+):
+    """Retrieve seller contact details when an authenticated buyer clicks Buy Now."""
+    try:
+        book_oid = ObjectId(book_id)
+    except (InvalidId, TypeError):
+        raise HTTPException(status_code=400, detail="Invalid book ID")
+
+    book = await db.books.find_one({"_id": book_oid})
+    if not book or book.get("admin_hidden"):
+        raise HTTPException(status_code=404, detail="Book not found")
+
+    if book.get("seller_id") == auth.user_id:
+        raise HTTPException(status_code=400, detail="Cannot request contact for your own book")
+
+    seller_id = book.get("seller_id")
+    seller_username = book.get("seller_username")
+    if not seller_username and seller_id:
+        seller_user = await db.users.find_one({"_id": seller_id})
+        if seller_user:
+            seller_username = seller_user.get("username") or seller_user.get("telegram_username")
+
+    if seller_username:
+        clean_user = seller_username.lstrip("@")
+        telegram_link = f"https://t.me/{clean_user}"
+        has_username = True
+        formatted_username = f"@{clean_user}"
+    else:
+        telegram_link = f"tg://user?id={seller_id}" if seller_id else None
+        has_username = False
+        formatted_username = None
+
+    return SellerContactResponse(
+        book_id=str(book["_id"]),
+        book_title=book.get("title", "Untitled listing"),
+        price=book.get("price"),
+        is_negotiable=book.get("is_negotiable", False),
+        seller_id=seller_id,
+        seller_username=formatted_username,
+        telegram_link=telegram_link,
+        has_username=has_username,
     )
 
 

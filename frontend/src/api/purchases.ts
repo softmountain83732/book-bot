@@ -12,6 +12,17 @@ export interface CancelPurchaseResponse {
   message: string;
 }
 
+export interface SellerContactResponse {
+  book_id: string;
+  book_title: string;
+  price?: number | null;
+  is_negotiable: boolean;
+  seller_id: number;
+  seller_username?: string | null;
+  telegram_link?: string | null;
+  has_username: boolean;
+}
+
 export interface PurchaseHistoryItem {
   id: string;
   book_id: string;
@@ -37,6 +48,11 @@ export async function requestBuyBook(bookId: string): Promise<BuyResponse> {
   const response = await apiClient.post<BuyResponse>('/purchases/buy', {
     book_id: bookId,
   });
+  return response.data;
+}
+
+export async function fetchSellerContact(bookId: string): Promise<SellerContactResponse> {
+  const response = await apiClient.get<SellerContactResponse>(`/purchases/seller-contact/${bookId}`);
   return response.data;
 }
 

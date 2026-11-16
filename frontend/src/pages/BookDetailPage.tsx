@@ -2,10 +2,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight, Heart, Flag, CheckCircle, AlertTriangle, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Heart, Flag, CheckCircle, X, ExternalLink } from 'lucide-react';
 import { fetchBookById, getPhotoUrl } from '../api/books';
 import { addFavorite, removeFavorite } from '../api/favorites';
-import { requestBuyBook } from '../api/purchases';
+import { requestBuyBook, fetchSellerContact } from '../api/purchases';
 import { submitBookReport } from '../api/reports';
 import { formatSemesterDisplay, formatPrice, getStatusBadgeClass, getStatusLabel } from '../utils/semester';
 import { useAuth } from '../context/AuthContext';
@@ -44,6 +44,12 @@ export const BookDetailPage: React.FC = () => {
     queryKey: ['book', bookId],
     queryFn: () => fetchBookById(bookId!),
     enabled: !!bookId,
+  });
+
+  const { data: sellerContact, isLoading: isContactLoading } = useQuery({
+    queryKey: ['seller-contact', bookId],
+    queryFn: () => fetchSellerContact(bookId!),
+    enabled: showBuyConfirm && !!bookId,
   });
 
   const [isFav, setIsFav] = useState<boolean>(false);
@@ -445,13 +451,6 @@ export const BookDetailPage: React.FC = () => {
             </div>
           )}
         </div>
-
-        {book.seller_username && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-            <span style={{ fontSize: '14px', color: 'var(--tg-theme-hint-color)' }}>ရောင်းသူ</span>
-            <span style={{ fontSize: '14px', fontWeight: 600 }}>@{book.seller_username}</span>
-          </div>
-        )}
       </div>
 
       {/* Action buttons */}
@@ -528,35 +527,108 @@ export const BookDetailPage: React.FC = () => {
               backgroundColor: 'var(--tg-theme-bg-color)',
               borderRadius: '16px',
               padding: '20px',
-              maxWidth: '320px',
+              maxWidth: '340px',
               width: '100%',
               display: 'flex',
               flexDirection: 'column',
-              gap: '12px',
-              textAlign: 'center',
+              gap: '14px',
+              textAlign: 'left',
             }}
           >
-            <AlertTriangle size={40} color="#3b82f6" style={{ margin: '0 auto' }} />
-            <h3 style={{ fontSize: '16px', fontWeight: 'bold' }}>စာအုပ်ဝယ်ယူရန် သေချာပါသလား?</h3>
-            <p style={{ fontSize: '13px', color: 'var(--tg-theme-hint-color)' }}>
-              ဝယ်ယူရန် Request တင်လိုက်ပါက ရောင်းသူထံသို့ အကြောင်းကြားစာ ပို့ပေးမည်ဖြစ်ပြီး၊ ရောင်းသူ၏ Telegram Contact ကို Bot Private Chat တွင် ကြည့်ရှုနိုင်ပါမည်။
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '36px', marginBottom: '4px' }}>🛒</div>
+              <h3 style={{ fontSize: '17px', fontWeight: 'bold', margin: 0 }}>
+                ဝယ်ယူမှု အတည်ပြုရန် (Confirm Purchase)
+              </h3>
+            </div>
+
+            {/* Book & Seller Details Box */}
+            <div
+              style={{
+                backgroundColor: 'var(--tg-theme-secondary-bg-color)',
+                borderRadius: '12px',
+                padding: '12px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                fontSize: '13px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ color: 'var(--tg-theme-hint-color)' }}>စာအုပ်:</span>
+                <span style={{ fontWeight: 600, textAlign: 'right', wordBreak: 'break-word' }}>
+                  {book.title}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--tg-theme-hint-color)' }}>ဈေးနှုန်း:</span>
+                <span style={{ fontWeight: 700, color: 'var(--tg-theme-button-color)' }}>
+                  {formatPrice(book.price, book.is_negotiable)}
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: 'var(--tg-theme-hint-color)' }}>ရောင်းသူ:</span>
+                {isContactLoading ? (
+                  <span style={{ color: 'var(--tg-theme-hint-color)', fontSize: '12px' }}>ရယူနေဆဲ...</span>
+                ) : sellerContact?.has_username ? (
+                  <span style={{ fontWeight: 600, color: 'var(--tg-theme-button-color)' }}>
+                    {sellerContact.seller_username}
+                  </span>
+                ) : (
+                  <span style={{ color: 'var(--tg-theme-hint-color)', fontSize: '12px' }}>
+                    အကောင့် username မရှိပါ
+                  </span>
+                )}
+              </div>
+
+              {/* Clickable Telegram Link */}
+              {!isContactLoading && sellerContact?.telegram_link && (
+                <div style={{ marginTop: '4px', paddingTop: '8px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                  <a
+                    href={sellerContact.telegram_link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      color: 'var(--tg-theme-link-color, #2563eb)',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    <span>💬 Seller နှင့် Telegram Chat ဖွင့်ရန်</span>
+                    <ExternalLink size={14} />
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <p style={{ fontSize: '12px', color: 'var(--tg-theme-hint-color)', margin: 0, lineHeight: 1.4 }}>
+              ဝယ်ယူရန် Request တင်လိုက်ပါက ရောင်းသူနှင့် ဝယ်သူထံသို့ Bot မှတစ်ဆင့် အကြောင်းကြားစာ အသီးသီး ပို့ပေးမည် ဖြစ်ပါသည်။
             </p>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
               <button
+                type="button"
                 className="btn-secondary"
                 style={{ flex: 1 }}
                 onClick={() => setShowBuyConfirm(false)}
                 disabled={buyMutation.isPending}
               >
-                မလုပ်တော့ပါ
+                မလုပ်တော့ပါ (Cancel)
               </button>
               <button
+                type="button"
                 className="btn-primary"
-                style={{ flex: 1 }}
+                style={{ flex: 1.2 }}
                 onClick={() => buyMutation.mutate()}
-                disabled={buyMutation.isPending}
+                disabled={buyMutation.isPending || isContactLoading}
               >
-                {buyMutation.isPending ? 'ပို့နေပါသည်...' : 'ဝယ်ယူမည်'}
+                {buyMutation.isPending ? 'ပို့နေပါသည်...' : 'အတည်ပြုမည် (Confirm)'}
               </button>
             </div>
           </div>

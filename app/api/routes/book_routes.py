@@ -29,7 +29,6 @@ _LIST_PROJECTION = {
     "condition": 1,
     "condition_details": 1,
     "seller_id": 1,
-    "seller_username": 1,
     "status": 1,
     "photo_file_ids": 1,
     "photo_file_id": 1,

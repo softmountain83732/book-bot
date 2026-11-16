@@ -20,10 +20,14 @@ export interface SellerMetricsResponse {
 
 export interface EditListingPayload {
   title?: string;
+  major_slug?: string;
+  year?: number;
+  semester?: string | number;
   price?: number | null;
   is_negotiable?: boolean;
   condition?: string;
   condition_details?: string | null;
+  photo_file_ids?: string[];
 }
 
 export async function fetchSellerMetrics(): Promise<SellerMetricsResponse> {
@@ -35,6 +39,11 @@ export async function fetchMyBooks(status?: string, page = 1, page_size = 20): P
   const response = await apiClient.get<MyBooksPageResponse>('/my-books', {
     params: { status: status !== 'all' ? status : undefined, page, page_size },
   });
+  return response.data;
+}
+
+export async function fetchMyBookDetail(bookId: string): Promise<Book> {
+  const response = await apiClient.get<Book>(`/my-books/${bookId}`);
   return response.data;
 }
 

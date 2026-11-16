@@ -1,7 +1,9 @@
 # tests/test_sell_and_manage.py
 """Unit tests for Sell input validation and seller management rules."""
+from datetime import datetime, timezone
 import pytest
 from app.services.sell_service import validate_sell_input
+from app.api.routes.my_books_routes import EditListingRequest, MyBookDetailResponse
 
 def test_validate_sell_input_valid_year1():
     valid, msg, clean = validate_sell_input(
@@ -74,3 +76,43 @@ def test_validate_sell_input_no_photos():
     )
     assert valid is False
     assert "ဓာတ်ပုံ" in msg
+
+def test_edit_listing_request_schema():
+    req = EditListingRequest(
+        title="Modern Control Systems",
+        major_slug="ep",
+        year=3,
+        semester="1",
+        price=35000,
+        is_negotiable=False,
+        condition="Used",
+        condition_details="Like new with minor pencil notes",
+        photo_file_ids=["id1", "id2"],
+    )
+    assert req.title == "Modern Control Systems"
+    assert req.major_slug == "ep"
+    assert req.year == 3
+    assert req.price == 35000
+    assert len(req.photo_file_ids) == 2
+
+def test_my_book_detail_response_includes_photos():
+    data = {
+        "_id": "60c72b2f9b1d8b2badbee5a0",
+        "title": "Algorithms",
+        "major": "CEIT",
+        "major_slug": "ceit",
+        "year": 2,
+        "semester": "3",
+        "price": 20000,
+        "is_negotiable": False,
+        "condition": "Used",
+        "condition_details": "No tears",
+        "seller_id": 12345,
+        "status": "Available",
+        "photo_file_ids": ["photo_1", "photo_2"],
+        "created_at": datetime.now(timezone.utc),
+    }
+    resp = MyBookDetailResponse(**data)
+    assert resp.photo_file_ids == ["photo_1", "photo_2"]
+    assert resp.photo_count == 2
+    assert resp.has_photos is True
