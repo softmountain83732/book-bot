@@ -1,5 +1,5 @@
 // frontend/src/types/index.ts
-export type MajorSlug = 'ceit' | 'ep' | 'ec' | 'arch' | 'mc' | 'mech' | 'civil';
+export type MajorSlug = 'ceit' | 'ep' | 'ec' | 'arch' | 'mc' | 'mech' | 'civil' | 'archi' | 'me';
 
 export interface MajorOption {
   slug: MajorSlug;

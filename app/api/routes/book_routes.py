@@ -11,6 +11,7 @@ from pymongo.asynchronous.database import AsyncDatabase
 
 from app.api.deps import AuthContext, get_optional_user, get_db
 from app.api.schemas.book_schemas import BookDetailResponse, BookListResponse, BooksListPage
+from app.api.utils.major import build_major_filter
 from app.api.utils.semester import build_semester_filter
 
 logger = logging.getLogger(__name__)
@@ -63,8 +64,9 @@ async def list_books(
     if year is not None:
         query["year"] = year
 
-    if major_slug:
-        query["major_slug"] = major_slug.lower().strip()
+    major_filter = build_major_filter(major_slug)
+    if major_filter:
+        query.update(major_filter)
 
     sem_filter = build_semester_filter(year, semester)
     if sem_filter:

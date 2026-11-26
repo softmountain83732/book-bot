@@ -13,6 +13,7 @@ from telegram import Bot
 
 from app.api.deps import AuthContext, get_current_user, get_db
 from app.api.schemas.book_schemas import BookDetailResponse, BookListResponse
+from app.api.utils.major import normalize_major_slug
 from app.config import settings
 from app.services.channel_service import update_book_channel
 from app.services.sell_service import VALID_MAJORS
@@ -185,7 +186,8 @@ async def edit_my_book(
         clean_slug = body.major_slug.lower().strip()
         if clean_slug not in VALID_MAJORS:
             raise HTTPException(status_code=400, detail="မေဂျာ မမှန်ကန်ပါ။")
-        update_fields["major_slug"] = clean_slug
+        canon_slug = normalize_major_slug(clean_slug) or clean_slug
+        update_fields["major_slug"] = canon_slug
         update_fields["major"] = VALID_MAJORS[clean_slug]
 
     # Year & Semester validation

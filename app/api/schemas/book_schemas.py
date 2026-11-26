@@ -4,6 +4,8 @@ from datetime import datetime
 from typing import Any, List, Optional
 from pydantic import BaseModel, Field, model_validator
 
+from app.api.utils.major import get_major_name, normalize_major_slug
+
 
 class BookListResponse(BaseModel):
     id: str = Field(alias="_id")
@@ -49,6 +51,15 @@ class BookListResponse(BaseModel):
             # Serialize ObjectId to string
             if "_id" in data and not isinstance(data["_id"], str):
                 data["_id"] = str(data["_id"])
+
+            # Normalize major_slug to canonical Mini App slug (e.g. archi -> arch, me -> mech)
+            raw_slug = data.get("major_slug")
+            raw_major = data.get("major")
+            canon_slug = normalize_major_slug(raw_slug or raw_major)
+            if canon_slug:
+                data["major_slug"] = canon_slug
+            if not data.get("major") and canon_slug:
+                data["major"] = get_major_name(canon_slug) or ""
         return data
 
 

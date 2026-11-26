@@ -9,6 +9,7 @@ from pymongo.errors import PyMongoError
 from telegram import Bot, InputMediaPhoto
 from telegram.error import TelegramError
 
+from app.api.utils.major import MAJOR_NAMES, normalize_major_slug
 from app.config import settings
 from app.keyboards.book_actions import purchase_keyboard
 from app.services.audit_service import record_audit_event
@@ -21,8 +22,10 @@ VALID_MAJORS = {
     "ep": "EP",
     "ec": "EC",
     "arch": "Architecture",
+    "archi": "Architecture",
     "mc": "MC",
     "mech": "Mechanical",
+    "me": "Mechanical",
     "civil": "Civil",
 }
 
@@ -51,10 +54,10 @@ def validate_sell_input(
     if not title or len(title) < 2 or len(title) > 120:
         return False, "စာအုပ်အမည်သည် အနည်းဆုံး ၂ လုံးမှ ၁၂၀ လုံးအတွင်း ဖြစ်ရပါမည်။", {}
 
-    slug = (major_slug or "").lower().strip()
-    if slug not in VALID_MAJORS:
+    canon_slug = normalize_major_slug(major_slug)
+    if not canon_slug or canon_slug not in MAJOR_NAMES:
         return False, "မေဂျာ မမှန်ကန်ပါ။", {}
-    major_name = VALID_MAJORS[slug]
+    major_name = MAJOR_NAMES[canon_slug]
 
     if year not in [1, 2, 3, 4, 5, 6]:
         return False, "ပညာသင်နှစ်သည် Year 1 မှ Year 6 အတွင်း ဖြစ်ရပါမည်။", {}
@@ -98,7 +101,7 @@ def validate_sell_input(
     clean_data = {
         "title": title,
         "major": major_name,
-        "major_slug": slug,
+        "major_slug": canon_slug,
         "year": year,
         "semester": semester if isinstance(semester, (int, str)) else str(semester),
         "price": price if not is_negotiable else None,
