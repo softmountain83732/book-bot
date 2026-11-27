@@ -172,8 +172,8 @@ export const HomePage: React.FC = () => {
             <BookPlus size={24} />
           </div>
           <div>
-            <div style={{ fontWeight: 'bold', fontSize: '15px' }}>စာအုပ် ရောင်းချမည်လား?</div>
-            <div style={{ fontSize: '12px', opacity: 0.9 }}>ကျောင်းသားအချင်းချင်း အခမဲ့ စာရင်းတင်သွင်းပါ</div>
+            <div style={{ fontWeight: 'bold', fontSize: '15px' }}>စာအုပ် ရောင်းချင်တာလား</div>
+            <div style={{ fontSize: '12px', opacity: 0.9 }}>ဒီကနေ ကျောင်းသားအချင်းချင်းရောင်းနိုင်ပါတယ်</div>
           </div>
         </div>
         <ChevronRight size={20} />
