@@ -30,17 +30,31 @@ export const HomePage: React.FC = () => {
   });
 
   const recentBooks = recentBooksData?.items ?? [];
+  const adminContactUrl = (import.meta.env.VITE_ADMIN_CONTACT_URL || '').trim();
 
   const handleRefresh = () => {
     triggerHaptic('light');
     refetch();
   };
 
+  const handleContactAdmin = () => {
+    if (!adminContactUrl) return;
+    triggerHaptic('light');
+    const tg = window.Telegram?.WebApp;
+    if (tg && adminContactUrl.startsWith('https://t.me/')) {
+      tg.openTelegramLink(adminContactUrl);
+    } else if (tg && typeof tg.openLink === 'function') {
+      tg.openLink(adminContactUrl);
+    } else {
+      window.open(adminContactUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <h1 style={{ fontSize: '20px', fontWeight: 'bold' }}>
             မင်္ဂလာပါ {user?.first_name || 'မိတ်ဆွေ'} 👋
           </h1>
@@ -48,7 +62,17 @@ export const HomePage: React.FC = () => {
             HBTU Book Marketplace မှ ကြိုဆိုပါသည်
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          {adminContactUrl && (
+            <button
+              type="button"
+              onClick={handleContactAdmin}
+              className="contact-admin-btn"
+              aria-label="Contact Admin"
+            >
+              <span className="contact-admin-btn__label">Contact Admin</span>
+            </button>
+          )}
           <button
             onClick={handleRefresh}
             aria-label="Refresh"
